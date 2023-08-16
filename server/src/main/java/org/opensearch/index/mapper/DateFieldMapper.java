@@ -32,9 +32,7 @@
 
 package org.opensearch.index.mapper;
 
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.SortedNumericDocValuesField;
-import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
@@ -426,18 +424,7 @@ public final class DateFieldMapper extends ParametrizedFieldMapper {
                 throw new IllegalArgumentException("Field [" + name() + "] of type [" + typeName() + "] does not support DISJOINT ranges");
             }
             DateMathParser parser = forcedDateParser == null ? dateMathParser : forcedDateParser;
-            return dateRangeQuery(lowerTerm, upperTerm, includeLower, includeUpper, timeZone, parser, context, resolution, (l, u) -> {
-                Query query = LongPoint.newRangeQuery(name(), l, u);
-                if (hasDocValues()) {
-                    Query dvQuery = SortedNumericDocValuesField.newSlowRangeQuery(name(), l, u);
-                    query = new IndexOrDocValuesQuery(query, dvQuery);
-
-                    if (context.indexSortedOnField(name())) {
-                        query = new IndexSortSortedNumericDocValuesRangeQuery(name(), l, u, query);
-                    }
-                }
-                return query;
-            });
+            return dateRangeQuery(lowerTerm, upperTerm, includeLower, includeUpper, timeZone, parser, context, resolution, (l, u) -> LongPoint.newRangeQuery(name(), l, u));
         }
 
         public static Query dateRangeQuery(
@@ -694,17 +681,7 @@ public final class DateFieldMapper extends ParametrizedFieldMapper {
             }
         }
 
-        if (indexed) {
-            context.doc().add(new LongPoint(fieldType().name(), timestamp));
-        }
-        if (hasDocValues) {
-            context.doc().add(new SortedNumericDocValuesField(fieldType().name(), timestamp));
-        } else if (store || indexed) {
-            createFieldNamesField(context);
-        }
-        if (store) {
-            context.doc().add(new StoredField(fieldType().name(), timestamp));
-        }
+        context.doc().add(new LongField(fieldType().name(), timestamp, store ? Field.Store.YES : Field.Store.NO));
     }
 
     public boolean getIgnoreMalformed() {
