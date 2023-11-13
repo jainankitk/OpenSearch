@@ -189,11 +189,14 @@ public class QueryPhase {
     static boolean executeInternal(SearchContext searchContext, QueryPhaseSearcher queryPhaseSearcher) throws QueryPhaseExecutionException {
         final ContextIndexSearcher searcher = searchContext.searcher();
         final IndexReader reader = searcher.getIndexReader();
+
         QuerySearchResult queryResult = searchContext.queryResult();
         queryResult.searchTimedOut(false);
+
         try {
             queryResult.from(searchContext.from());
             queryResult.size(searchContext.size());
+
             Query query = searchContext.query();
             assert query == searcher.rewrite(query); // already rewritten
 

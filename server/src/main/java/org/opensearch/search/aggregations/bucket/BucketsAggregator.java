@@ -395,6 +395,7 @@ public abstract class BucketsAggregator extends AggregatorBase {
                 "Can't collect more than [" + Integer.MAX_VALUE + "] buckets but attempted [" + totalOrdsToCollect + "]"
             );
         }
+
         long[] bucketOrdsToCollect = new long[(int) totalOrdsToCollect];
         int b = 0;
         for (int ordIdx = 0; ordIdx < owningBucketOrds.length; ordIdx++) {
@@ -403,6 +404,7 @@ public abstract class BucketsAggregator extends AggregatorBase {
                 bucketOrdsToCollect[b++] = ordsEnum.ord();
             }
         }
+
         InternalAggregations[] subAggregationResults = buildSubAggsForBuckets(bucketOrdsToCollect);
 
         InternalAggregation[] results = new InternalAggregation[owningBucketOrds.length];

@@ -45,6 +45,7 @@ import org.apache.lucene.util.NumericUtils;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.Rounding;
 import org.opensearch.common.lease.Releasables;
+import org.opensearch.index.fielddata.SortedNumericDoubleValues;
 import org.opensearch.search.DocValueFormat;
 import org.opensearch.search.aggregations.Aggregator;
 import org.opensearch.search.aggregations.AggregatorFactories;
@@ -115,7 +116,7 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
     ) throws IOException {
         super(name, factories, aggregationContext, parent, CardinalityUpperBound.MANY, metadata);
         this.rounding = rounding;
-        this.preparedRounding = preparedRounding;
+        this.preparedRounding = preparedRounding; // TODO reading TimeIntervalRounding$FixedRounding
         this.order = order;
         order.validate(this);
         this.keyed = keyed;
@@ -188,7 +189,7 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
                     int valuesCount = values.docValueCount();
 
                     long previousRounded = Long.MIN_VALUE;
-                    for (int i = 0; i < valuesCount; ++i) {
+                    for (int i = 0; i < valuesCount; ++i) { // TODO ? Why support multiple values here?
                         long value = values.nextValue();
                         long rounded = preparedRounding.round(value);
                         assert rounded >= previousRounded;
@@ -213,9 +214,11 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
 
     @Override
     public InternalAggregation[] buildAggregations(long[] owningBucketOrds) throws IOException {
-        return buildAggregationsForVariableBuckets(owningBucketOrds, bucketOrds, (bucketValue, docCount, subAggregationResults) -> {
-            return new InternalDateHistogram.Bucket(bucketValue, docCount, keyed, formatter, subAggregationResults);
-        }, (owningBucketOrd, buckets) -> {
+        return buildAggregationsForVariableBuckets(owningBucketOrds, bucketOrds,
+            (bucketValue, docCount, subAggregationResults) -> {
+                return new InternalDateHistogram.Bucket(bucketValue, docCount, keyed, formatter, subAggregationResults);
+            },
+            (owningBucketOrd, buckets) -> {
             // the contract of the histogram aggregation is that shards must return buckets ordered by key in ascending order
             CollectionUtil.introSort(buckets, BucketOrder.key(true).comparator());
 
