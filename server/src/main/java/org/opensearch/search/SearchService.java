@@ -230,6 +230,14 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
         Property.NodeScope
     );
 
+    // Keeping the default value to maintain existing behaviour
+    public static final Setting<Boolean> DEFAULT_IGNORE_UNAVAILABLE = Setting.boolSetting(
+        "search.default_ignore_unavailable",
+        false,
+        Property.Dynamic,
+        Property.NodeScope
+    );
+
     public static final Setting<Integer> MAX_OPEN_SCROLL_CONTEXT = Setting.intSetting(
         "search.max_open_scroll_context",
         500,
@@ -312,6 +320,8 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
 
     private volatile boolean defaultAllowPartialSearchResults;
 
+    private volatile boolean defaultIgnoreUnavailable;
+
     private volatile boolean lowLevelCancellation;
 
     private volatile int maxOpenScrollContext;
@@ -380,6 +390,10 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
         defaultAllowPartialSearchResults = DEFAULT_ALLOW_PARTIAL_SEARCH_RESULTS.get(settings);
         clusterService.getClusterSettings()
             .addSettingsUpdateConsumer(DEFAULT_ALLOW_PARTIAL_SEARCH_RESULTS, this::setDefaultAllowPartialSearchResults);
+
+        defaultIgnoreUnavailable = DEFAULT_IGNORE_UNAVAILABLE.get(settings);
+        clusterService.getClusterSettings()
+            .addSettingsUpdateConsumer(DEFAULT_IGNORE_UNAVAILABLE, this::setDefaultIgnoreUnavailable);
 
         maxOpenScrollContext = MAX_OPEN_SCROLL_CONTEXT.get(settings);
         clusterService.getClusterSettings().addSettingsUpdateConsumer(MAX_OPEN_SCROLL_CONTEXT, this::setMaxOpenScrollContext);
@@ -451,6 +465,14 @@ public class SearchService extends AbstractLifecycleComponent implements IndexEv
 
     public boolean defaultAllowPartialSearchResults() {
         return defaultAllowPartialSearchResults;
+    }
+
+    private void setDefaultIgnoreUnavailable(boolean defaultIgnoreUnavailable) {
+        this.defaultIgnoreUnavailable = defaultIgnoreUnavailable;
+    }
+
+    public boolean defaultIgnoreUnavailable() {
+        return defaultIgnoreUnavailable;
     }
 
     private void setMaxOpenScrollContext(int maxOpenScrollContext) {

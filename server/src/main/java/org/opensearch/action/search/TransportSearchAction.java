@@ -1080,6 +1080,10 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
             // No user preference defined in search request - apply cluster service default
             searchRequest.allowPartialSearchResults(searchService.defaultAllowPartialSearchResults());
         }
+        if (searchRequest.ignoreUnavailable() == null) {
+            // No user preference defined in search request - apply cluster service default
+            searchRequest.ignoreUnavailable(searchService.defaultIgnoreUnavailable());
+        }
         if (searchRequest.isSuggestOnly()) {
             // disable request cache if we have only suggest
             searchRequest.requestCache(false);
