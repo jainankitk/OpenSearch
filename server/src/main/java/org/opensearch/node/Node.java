@@ -205,6 +205,7 @@ import org.opensearch.plugins.ExtensionAwarePlugin;
 import org.opensearch.plugins.IdentityAwarePlugin;
 import org.opensearch.plugins.IdentityPlugin;
 import org.opensearch.plugins.IndexStorePlugin;
+import org.opensearch.plugins.MappingAwarePlugin;
 import org.opensearch.plugins.IngestPlugin;
 import org.opensearch.plugins.MapperPlugin;
 import org.opensearch.plugins.MetadataUpgrader;
@@ -1022,6 +1023,29 @@ public class Node implements Closeable {
 
             // Add the telemetryAwarePlugin components to the existing pluginComponents collection.
             pluginComponents.addAll(telemetryAwarePluginComponents);
+
+            Collection<Object> indicesAwarePluginComponents = pluginsService.filterPlugins(MappingAwarePlugin.class)
+                .stream()
+                .flatMap(
+                    p -> p.createComponents(
+                        client,
+                        clusterService,
+                        threadPool,
+                        resourceWatcherService,
+                        scriptService,
+                        xContentRegistry,
+                        environment,
+                        nodeEnvironment,
+                        namedWriteableRegistry,
+                        clusterModule.getIndexNameExpressionResolver(),
+                        repositoriesServiceReference::get,
+                        indicesService::getMapperService
+                    ).stream()
+                )
+                .collect(Collectors.toList());
+
+            // Add the indicesAwarePluginComponents components to the existing pluginComponents collection.
+            pluginComponents.addAll(indicesAwarePluginComponents);
 
             List<IdentityAwarePlugin> identityAwarePlugins = pluginsService.filterPlugins(IdentityAwarePlugin.class);
             identityService.initializeIdentityAwarePlugins(identityAwarePlugins);

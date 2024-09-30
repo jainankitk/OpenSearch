@@ -794,6 +794,11 @@ public class IndicesService extends AbstractLifecycleComponent
         return indices.get(index.getUUID());
     }
 
+    @Nullable
+    public MapperService getMapperService(Index index) {
+        return indices.get(index.getUUID()).mapperService();
+    }
+
     /**
      * Returns an IndexService for the specified index if exists otherwise a {@link IndexNotFoundException} is thrown.
      */
