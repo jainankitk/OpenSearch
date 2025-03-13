@@ -190,10 +190,10 @@ public class Rule implements Writeable, ToXContentObject {
             return builder.attributeMap(attributeMap1);
         }
 
-        public static <T extends FeatureType> void fromXContentParseArray(
+        public static void fromXContentParseArray(
             XContentParser parser,
             String fieldName,
-            T featureType,
+            FeatureType featureType,
             Map<Attribute, Set<String>> attributeMap
         ) throws IOException {
             Attribute attribute = featureType.getAttributeFromName(fieldName);
