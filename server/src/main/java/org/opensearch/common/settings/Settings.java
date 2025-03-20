@@ -105,10 +105,10 @@ public final class Settings implements ToXContentFragment {
     public static final Settings EMPTY = new Settings(Collections.emptyMap(), null);
 
     /** The raw settings from the full key to raw string value. */
-    private final Map<String, Object> settings;
+    public final Map<String, Object> settings;
 
     /** The secure settings storage associated with these settings. */
-    private final SecureSettings secureSettings;
+    public final SecureSettings secureSettings;
 
     /** The first level of setting names. This is constructed lazily in {@link #names()}. */
     private final SetOnce<Set<String>> firstLevelNames = new SetOnce<>();
@@ -119,7 +119,7 @@ public final class Settings implements ToXContentFragment {
      */
     private final SetOnce<Set<String>> keys = new SetOnce<>();
 
-    private Settings(Map<String, Object> settings, SecureSettings secureSettings) {
+    public Settings(Map<String, Object> settings, SecureSettings secureSettings) {
         // we use a sorted map for consistent serialization when using getAsMap()
         this.settings = Collections.unmodifiableSortedMap(new TreeMap<>(settings));
         this.secureSettings = secureSettings;

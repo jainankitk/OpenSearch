@@ -37,16 +37,20 @@ import org.opensearch.action.support.clustermanager.TransportClusterManagerNodeA
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.block.ClusterBlockException;
 import org.opensearch.cluster.block.ClusterBlockLevel;
+import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver;
 import org.opensearch.cluster.metadata.MetadataCreateIndexService;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.inject.Inject;
+import org.opensearch.common.settings.Settings;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.common.io.stream.StreamInput;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.TransportService;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Create index action.
@@ -112,6 +116,9 @@ public class TransportCreateIndexAction extends TransportClusterManagerNodeActio
         }
 
         final String indexName = indexNameExpressionResolver.resolveDateMathExpression(request.index());
+        Map<String, Object> mp = new HashMap<>(request.settings().settings);
+        mp.put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1);
+        request.settings(new Settings(mp, request.settings().secureSettings));
         final CreateIndexClusterStateUpdateRequest updateRequest = new CreateIndexClusterStateUpdateRequest(
             cause,
             indexName,

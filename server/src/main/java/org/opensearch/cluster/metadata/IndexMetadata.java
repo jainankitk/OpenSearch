@@ -218,7 +218,7 @@ public class IndexMetadata implements Diffable<IndexMetadata>, ToXContentFragmen
         /* This property should be provided if the default number of shards for any new index has to be changed to a value
          * other than 1. This value is applicable only if the index.number_of_shards setting is not provided as part of the
          * index creation request. */
-        final int defaultNumShards = Integer.parseInt(System.getProperty(DEFAULT_NUMBER_OF_SHARDS, "1"));
+        final int defaultNumShards = 1;
         if (defaultNumShards < 1 || defaultNumShards > maxNumShards) {
             throw new IllegalArgumentException(
                 DEFAULT_NUMBER_OF_SHARDS
