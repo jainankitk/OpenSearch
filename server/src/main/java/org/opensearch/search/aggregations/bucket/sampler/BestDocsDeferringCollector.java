@@ -118,6 +118,11 @@ public class BestDocsDeferringCollector extends DeferringBucketCollector impleme
             public void collect(int doc, long bucket) throws IOException {
                 perSegCollector.collect(doc, bucket);
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

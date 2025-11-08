@@ -636,6 +636,11 @@ public final class CompositeAggregator extends BucketsAggregator {
                         assert zeroBucket == 0L;
                         inner.collect(doc);
                     }
+
+                    @Override
+                    public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                        super.collect(doc, owningBucketOrd);
+                    }
                 };
             }
         }

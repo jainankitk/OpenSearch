@@ -251,6 +251,11 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
                         collectValue(sub, doc, owningBucketOrd, preparedRounding.round(value));
                     }
                 }
+
+                @Override
+                public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                    super.collect(doc, owningBucketOrd);
+                }
             };
         }
 
@@ -273,6 +278,11 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
                         previousRounded = rounded;
                     }
                 }
+            }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
             }
         };
     }
@@ -539,8 +549,8 @@ class DateHistogramAggregator extends BucketsAggregator implements SizedBucketAg
         }
 
         @Override
-        public void collect(int doc) throws IOException {
-            collect(doc, 0);
+        public void collect(int[] doc, long owningBucketOrd) throws IOException {
+            super.collect(doc, owningBucketOrd);
         }
 
         @Override

@@ -142,6 +142,11 @@ public class SumAggregator extends NumericMetricsAggregator.SingleValue implemen
                     sums.set(bucket, kahanSummation.value());
                 }
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

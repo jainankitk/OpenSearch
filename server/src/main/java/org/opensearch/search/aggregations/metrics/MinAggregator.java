@@ -171,6 +171,11 @@ class MinAggregator extends NumericMetricsAggregator.SingleValue implements Star
                     mins.set(bucket, min);
                 }
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

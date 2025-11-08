@@ -191,6 +191,11 @@ class BinaryValuesSource extends SingleDimensionValuesSource<BytesRef> {
                     next.collect(doc, bucket);
                 }
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

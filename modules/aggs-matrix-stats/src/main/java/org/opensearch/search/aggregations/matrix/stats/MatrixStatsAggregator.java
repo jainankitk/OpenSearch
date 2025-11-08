@@ -113,6 +113,11 @@ final class MatrixStatsAggregator extends MetricsAggregator {
                 }
             }
 
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
+
             /**
              * return a map of field names and data
              */

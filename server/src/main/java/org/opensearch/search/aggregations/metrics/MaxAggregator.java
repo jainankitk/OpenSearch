@@ -172,6 +172,11 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
                 }
             }
 
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
+
         };
     }
 

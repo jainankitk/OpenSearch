@@ -203,6 +203,11 @@ public class AdjacencyMatrixAggregator extends BucketsAggregator {
                 }
                 assert pos == bits.length + totalNumIntersections;
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

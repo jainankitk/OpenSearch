@@ -239,6 +239,11 @@ public class MultiTermsAggregator extends DeferableBucketAggregator implements S
             public void collect(int doc, long owningBucketOrd) throws IOException {
                 collector.apply(doc, owningBucketOrd);
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

@@ -152,6 +152,11 @@ public class BestBucketsDeferringCollector extends DeferringBucketCollector {
                 lastDoc = doc;
                 maxBucket = Math.max(maxBucket, bucket);
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

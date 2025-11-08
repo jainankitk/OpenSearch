@@ -113,6 +113,11 @@ abstract class AbstractHDRPercentilesAggregator extends NumericMetricsAggregator
                     }
                 }
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
 
     }

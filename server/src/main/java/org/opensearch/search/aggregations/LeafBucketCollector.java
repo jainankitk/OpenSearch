@@ -32,11 +32,14 @@
 
 package org.opensearch.search.aggregations;
 
+import org.apache.lucene.search.CollectionTerminatedException;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.opensearch.search.aggregations.bucket.terms.LongKeyedBucketOrds;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -118,13 +121,69 @@ public abstract class LeafBucketCollector implements LeafCollector {
      */
     public abstract void collect(int doc, long owningBucketOrd) throws IOException;
 
+    final int[] docBuffer = new int[64];
+    int docCount = 0;
+
     @Override
     public void collect(int doc) throws IOException {
-        collect(doc, 0);
+        docBuffer[docCount++] = doc;
+        if (docCount == docBuffer.length) {
+            // Set docCount to 0 first in case the collection
+            // ends up throwing EarlyTerminationException
+            docCount = 0;
+            collect(docBuffer, 0);
+        }
+    }
+
+    public void collect(int[] doc, long owningBucketOrd) throws IOException {
+        for (int i=0; i<doc.length; i++) {
+            collect(doc[i], owningBucketOrd);
+        }
+    }
+
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+//        for (docCount = stream.intoArray(docBuffer); docCount != 0; docCount = stream.intoArray(docBuffer)) {
+//            if (docCount == docBuffer.length) {
+//                collect(docBuffer, 0);
+//            }
+//        }
+//        collectRemaining();
+        stream.forEach((doc) -> {
+            try {
+                collect(doc);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        collectRemaining();
     }
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
         // no-op by default
+    }
+
+    @Override
+    public void finish() throws IOException {
+        try {
+            collectRemaining();
+        } catch (CollectionTerminatedException e) {
+            // Some of the tests might throw CollectionTerminatedException
+            // during finish as the buffer could not fill even once and the
+            // collect(int[],long) could never be invoked. Hence, we should
+            // catch the exception here to prevent uncaught exception
+            docCount = 0;
+        }
+    }
+
+    private void collectRemaining() throws IOException {
+        if (docCount > 0) {
+            // Set docCount to 0 first in case the collection
+            // ends up throwing EarlyTerminationException
+            int[] docs = Arrays.copyOf(docBuffer, docCount);
+            docCount = 0;
+            collect(docs, 0);
+        }
     }
 }

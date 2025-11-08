@@ -64,6 +64,11 @@ public class GlobalAggregator extends BucketsAggregator implements SingleBucketA
                 assert bucket == 0 : "global aggregator can only be a top level aggregator";
                 collectBucket(sub, doc, bucket);
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

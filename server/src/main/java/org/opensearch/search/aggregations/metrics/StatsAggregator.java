@@ -141,6 +141,11 @@ class StatsAggregator extends NumericMetricsAggregator.MultiValue {
                     maxes.set(bucket, max);
                 }
             }
+
+            @Override
+            public void collect(int[] doc, long owningBucketOrd) throws IOException {
+                super.collect(doc, owningBucketOrd);
+            }
         };
     }
 

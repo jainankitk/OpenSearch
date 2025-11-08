@@ -75,4 +75,9 @@ public class LeafBucketCollectorBase extends LeafBucketCollector {
         sub.collect(doc, bucket);
     }
 
+    @Override
+    public void collect(int[] doc, long owningBucketOrd) throws IOException {
+        super.collect(doc, owningBucketOrd);
+    }
+
 }
