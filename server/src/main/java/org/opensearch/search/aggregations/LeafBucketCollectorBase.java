@@ -32,6 +32,7 @@
 
 package org.opensearch.search.aggregations;
 
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Scorable;
 import org.opensearch.common.lucene.ScorerAware;
 
@@ -78,6 +79,11 @@ public class LeafBucketCollectorBase extends LeafBucketCollector {
     @Override
     public void collect(int[] doc, long owningBucketOrd) throws IOException {
         super.collect(doc, owningBucketOrd);
+    }
+
+    @Override
+    public void collect(DocIdSetIterator iterator, long owningBucketOrd) throws IOException {
+        super.collect(iterator, owningBucketOrd);
     }
 
 }

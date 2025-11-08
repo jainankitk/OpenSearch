@@ -33,6 +33,7 @@
 package org.opensearch.search.aggregations;
 
 import org.apache.lucene.search.CollectionTerminatedException;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -42,6 +43,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 /**
  * Per-leaf bucket collector.
@@ -135,28 +138,47 @@ public abstract class LeafBucketCollector implements LeafCollector {
         }
     }
 
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+        stream.forEach((doc) -> {
+            try {
+                docBuffer[docCount++] = doc;
+                if (docCount == docBuffer.length) {
+                    // Set docCount to 0 first in case the collection
+                    // ends up throwing EarlyTerminationException
+                    docCount = 0;
+                    collect(docBuffer, 0);
+                }
+                collectRemaining(0);
+            } catch (IOException e) {
+                throw new CollectionTerminatedException();
+            }
+        });
+    }
+
     public void collect(int[] doc, long owningBucketOrd) throws IOException {
         for (int i = 0; i < doc.length; i++) {
             collect(doc[i], owningBucketOrd);
         }
     }
 
-    @Override
-    public void collect(DocIdStream stream) throws IOException {
+    public void collect(DocIdSetIterator iterator, long owningBucketOrd) throws IOException {
         // for (docCount = stream.intoArray(docBuffer); docCount != 0; docCount = stream.intoArray(docBuffer)) {
         // if (docCount == docBuffer.length) {
-        // collect(docBuffer, 0);
+        // collect(docBuffer, owningBucketOrd);
         // }
         // }
         // collectRemaining();
-        stream.forEach((doc) -> {
-            try {
-                collect(doc);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        while (iterator.nextDoc() != NO_MORE_DOCS) {
+            docBuffer[docCount++] = iterator.docID();
+            if (docCount == docBuffer.length) {
+                // Set docCount to 0 first in case the collection
+                // ends up throwing EarlyTerminationException
+                docCount = 0;
+                collect(docBuffer, owningBucketOrd);
             }
-        });
-        collectRemaining();
+        }
+        collectRemaining(owningBucketOrd);
     }
 
     @Override
@@ -167,7 +189,7 @@ public abstract class LeafBucketCollector implements LeafCollector {
     @Override
     public void finish() throws IOException {
         try {
-            collectRemaining();
+            collectRemaining(0);
         } catch (CollectionTerminatedException e) {
             // Some of the tests might throw CollectionTerminatedException
             // during finish as the buffer could not fill even once and the
@@ -177,13 +199,13 @@ public abstract class LeafBucketCollector implements LeafCollector {
         }
     }
 
-    private void collectRemaining() throws IOException {
+    private void collectRemaining(long owningBucketOrd) throws IOException {
         if (docCount > 0) {
             // Set docCount to 0 first in case the collection
             // ends up throwing EarlyTerminationException
             int[] docs = Arrays.copyOf(docBuffer, docCount);
             docCount = 0;
-            collect(docs, 0);
+            collect(docs, owningBucketOrd);
         }
     }
 }

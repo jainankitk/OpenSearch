@@ -33,6 +33,7 @@ package org.opensearch.search.aggregations.bucket.histogram;
 
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.util.CollectionUtil;
 import org.opensearch.common.Rounding;
@@ -272,6 +273,11 @@ abstract class AutoDateHistogramAggregator extends DeferableBucketAggregator {
             public void collect(int[] doc, long owningBucketOrd) throws IOException {
                 super.collect(doc, owningBucketOrd);
             }
+
+            @Override
+            public void collect(DocIdSetIterator iterator, long owningBucketOrd) throws IOException {
+                super.collect(iterator, owningBucketOrd);
+            }
         };
     }
 
@@ -422,6 +428,11 @@ abstract class AutoDateHistogramAggregator extends DeferableBucketAggregator {
                 @Override
                 public void collect(int[] doc, long owningBucketOrd) throws IOException {
                     super.collect(doc, owningBucketOrd);
+                }
+
+                @Override
+                public void collect(DocIdSetIterator iterator, long owningBucketOrd) throws IOException {
+                    super.collect(iterator, owningBucketOrd);
                 }
 
                 private void collectValue(int doc, long rounded) throws IOException {
@@ -676,6 +687,11 @@ abstract class AutoDateHistogramAggregator extends DeferableBucketAggregator {
                 @Override
                 public void collect(int[] doc, long owningBucketOrd) throws IOException {
                     super.collect(doc, owningBucketOrd);
+                }
+
+                @Override
+                public void collect(DocIdSetIterator iterator, long owningBucketOrd) throws IOException {
+                    super.collect(iterator, owningBucketOrd);
                 }
 
                 private int collectValue(long owningBucketOrd, int roundingIdx, int doc, long rounded) throws IOException {
