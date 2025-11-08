@@ -136,19 +136,19 @@ public abstract class LeafBucketCollector implements LeafCollector {
     }
 
     public void collect(int[] doc, long owningBucketOrd) throws IOException {
-        for (int i=0; i<doc.length; i++) {
+        for (int i = 0; i < doc.length; i++) {
             collect(doc[i], owningBucketOrd);
         }
     }
 
     @Override
     public void collect(DocIdStream stream) throws IOException {
-//        for (docCount = stream.intoArray(docBuffer); docCount != 0; docCount = stream.intoArray(docBuffer)) {
-//            if (docCount == docBuffer.length) {
-//                collect(docBuffer, 0);
-//            }
-//        }
-//        collectRemaining();
+        // for (docCount = stream.intoArray(docBuffer); docCount != 0; docCount = stream.intoArray(docBuffer)) {
+        // if (docCount == docBuffer.length) {
+        // collect(docBuffer, 0);
+        // }
+        // }
+        // collectRemaining();
         stream.forEach((doc) -> {
             try {
                 collect(doc);
