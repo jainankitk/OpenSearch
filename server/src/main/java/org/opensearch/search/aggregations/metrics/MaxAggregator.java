@@ -31,9 +31,12 @@
 
 package org.opensearch.search.aggregations.metrics;
 
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.ScoreMode;
@@ -46,6 +49,7 @@ import org.opensearch.index.codec.composite.CompositeIndexFieldInfo;
 import org.opensearch.index.compositeindex.datacube.MetricStat;
 import org.opensearch.index.fielddata.NumericDoubleValues;
 import org.opensearch.index.fielddata.SortedNumericDoubleValues;
+import org.opensearch.index.fielddata.SortedNumericUnsignedLongValues;
 import org.opensearch.search.DocValueFormat;
 import org.opensearch.search.MultiValueMode;
 import org.opensearch.search.aggregations.Aggregator;
@@ -154,9 +158,11 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
         }
 
         final BigArrays bigArrays = context.bigArrays();
-        final SortedNumericDoubleValues allValues = valuesSource.doubleValues(ctx);
-        final NumericDoubleValues values = MultiValueMode.MAX.select(allValues);
+        final SortedNumericDocValues allValues = valuesSource.longValues(ctx);
+        final NumericDocValues values = DocValues.unwrapSingleton(allValues);
         return new LeafBucketCollectorBase(sub, allValues) {
+            final int[] docBuffer = new int[64];
+            final long[] valueBuffer = new long[docBuffer.length];
 
             @Override
             public void collect(int doc, long bucket) throws IOException {
@@ -166,7 +172,7 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
                     maxes.fill(from, maxes.size(), Double.NEGATIVE_INFINITY);
                 }
                 if (values.advanceExact(doc)) {
-                    final double value = values.doubleValue();
+                    final double value = values.longValue();
                     double max = maxes.get(bucket);
                     max = Math.max(max, value);
                     maxes.set(bucket, max);
@@ -175,7 +181,20 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
 
             @Override
             public void collect(DocIdStream stream, long owningBucketOrd) throws IOException {
-                super.collect(stream, owningBucketOrd);
+                if (owningBucketOrd >= maxes.size()) {
+                    long from = maxes.size();
+                    maxes = bigArrays.grow(maxes, owningBucketOrd + 1);
+                    maxes.fill(from, maxes.size(), Double.NEGATIVE_INFINITY);
+                }
+
+                double max = maxes.get(owningBucketOrd);
+                for (int count = stream.intoArray(docBuffer); count != 0; count = stream.intoArray(docBuffer)) {
+                    values.longValues(count, docBuffer, valueBuffer, Long.MIN_VALUE);
+                    for (int i = 0; i < count; ++i) {
+                        max = Math.max(max, valueBuffer[i]);
+                    }
+                }
+                maxes.set(owningBucketOrd, max);
             }
 
             @Override
