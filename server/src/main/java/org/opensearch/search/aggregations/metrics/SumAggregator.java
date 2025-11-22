@@ -40,6 +40,7 @@ import org.opensearch.common.util.BigArrays;
 import org.opensearch.common.util.DoubleArray;
 import org.opensearch.index.codec.composite.CompositeIndexFieldInfo;
 import org.opensearch.index.compositeindex.datacube.MetricStat;
+import org.opensearch.index.fielddata.SingletonSortedNumericDoubleValues;
 import org.opensearch.index.fielddata.SortedNumericDoubleValues;
 import org.opensearch.search.DocValueFormat;
 import org.opensearch.search.aggregations.Aggregator;
@@ -55,6 +56,7 @@ import org.opensearch.search.startree.StarTreeQueryHelper;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.stream.DoubleStream;
 
 import static org.opensearch.search.startree.StarTreeQueryHelper.getSupportedStarTree;
 
@@ -121,11 +123,13 @@ public class SumAggregator extends NumericMetricsAggregator.SingleValue implemen
         final SortedNumericDoubleValues values = valuesSource.doubleValues(ctx);
         final CompensatedSum kahanSummation = new CompensatedSum(0, 0);
         return new LeafBucketCollectorBase(sub, values) {
+            final int[] docBuffer = new int[64];
+            final double[] valueBuffer = new double[64];
+
             @Override
             public void collect(int doc, long bucket) throws IOException {
                 sums = bigArrays.grow(sums, bucket + 1);
                 compensations = bigArrays.grow(compensations, bucket + 1);
-
                 if (values.advanceExact(doc)) {
                     final int valuesCount = values.docValueCount();
                     // Compute the sum of double values with Kahan summation algorithm which is more
@@ -146,12 +150,31 @@ public class SumAggregator extends NumericMetricsAggregator.SingleValue implemen
 
             @Override
             public void collect(DocIdStream stream, long owningBucketOrd) throws IOException {
-                super.collect(stream, owningBucketOrd);
-            }
+                sums = bigArrays.grow(sums, owningBucketOrd + 1);
+                compensations = bigArrays.grow(compensations, owningBucketOrd + 1);
+                double sum = sums.get(owningBucketOrd);
+                double compensation = compensations.get(owningBucketOrd);
+                kahanSummation.reset(sum, compensation);
 
-            @Override
-            public void collectRange(int min, int max) throws IOException {
-                super.collectRange(min, max);
+                for (int count = stream.intoArray(docBuffer); count != 0; count = stream.intoArray(docBuffer)) {
+                    if (values instanceof SingletonSortedNumericDoubleValues s) {
+                        s.getNumericDoubleValues().doubleValues(count, docBuffer, valueBuffer, 0);
+                        kahanSummation.add(valueBuffer, count);
+                    } else {
+                        for (int i = 0; i < count; i++) {
+                            if (values.advanceExact(docBuffer[i])) {
+                                final int valuesCount = values.docValueCount();
+                                for (int j = 0; j < valuesCount; j++) {
+                                    double value = values.nextValue();
+                                    kahanSummation.add(value);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                compensations.set(owningBucketOrd, kahanSummation.delta());
+                sums.set(owningBucketOrd, kahanSummation.value());
             }
         };
     }

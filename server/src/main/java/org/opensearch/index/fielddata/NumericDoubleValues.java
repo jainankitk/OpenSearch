@@ -119,4 +119,18 @@ public abstract class NumericDoubleValues extends DoubleValues {
     public int advance(int target) throws IOException {
         throw new UnsupportedOperationException();
     }
+
+    public void doubleValues(int size, int[] docs, double[] values, double defaultValue)
+        throws IOException {
+        for (int i = 0; i < size; ++i) {
+            int doc = docs[i];
+            double value;
+            if (advanceExact(doc)) {
+                value = doubleValue();
+            } else {
+                value = defaultValue;
+            }
+            values[i] = value;
+        }
+    }
 }

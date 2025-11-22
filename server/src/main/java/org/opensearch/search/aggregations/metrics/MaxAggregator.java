@@ -45,6 +45,7 @@ import org.opensearch.common.util.DoubleArray;
 import org.opensearch.index.codec.composite.CompositeIndexFieldInfo;
 import org.opensearch.index.compositeindex.datacube.MetricStat;
 import org.opensearch.index.fielddata.NumericDoubleValues;
+import org.opensearch.index.fielddata.SingletonSortedNumericDoubleValues;
 import org.opensearch.index.fielddata.SortedNumericDoubleValues;
 import org.opensearch.search.DocValueFormat;
 import org.opensearch.search.MultiValueMode;
@@ -156,7 +157,9 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
         final BigArrays bigArrays = context.bigArrays();
         final SortedNumericDoubleValues allValues = valuesSource.doubleValues(ctx);
         final NumericDoubleValues values = MultiValueMode.MAX.select(allValues);
-        return new LeafBucketCollectorBase(sub, allValues) {
+        return new LeafBucketCollectorBase(sub, values) {
+            final int[] docBuffer = new int[64];
+            final double[] valueBuffer = new double[64];
 
             @Override
             public void collect(int doc, long bucket) throws IOException {
@@ -174,13 +177,20 @@ class MaxAggregator extends NumericMetricsAggregator.SingleValue implements Star
             }
 
             @Override
-            public void collect(DocIdStream stream, long owningBucketOrd) throws IOException {
-                super.collect(stream, owningBucketOrd);
-            }
+            public void collect(DocIdStream stream, long bucket) throws IOException {
+                if (bucket >= maxes.size()) {
+                    long from = maxes.size();
+                    maxes = bigArrays.grow(maxes, bucket + 1);
+                    maxes.fill(from, maxes.size(), Double.NEGATIVE_INFINITY);
+                }
 
-            @Override
-            public void collectRange(int min, int max) throws IOException {
-                super.collectRange(min, max);
+                double max = maxes.get(bucket);
+                for (int count = stream.intoArray(docBuffer); count != 0; count = stream.intoArray(docBuffer)) {
+                    values.doubleValues(count, docBuffer, valueBuffer, Double.MIN_VALUE);
+                    max = Math.max(max, Arrays.stream(valueBuffer, 0, count).max().orElse(Double.NEGATIVE_INFINITY));
+                }
+
+                maxes.set(bucket, max);
             }
         };
     }

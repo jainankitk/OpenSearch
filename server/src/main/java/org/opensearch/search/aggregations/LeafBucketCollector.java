@@ -33,6 +33,7 @@
 package org.opensearch.search.aggregations;
 
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.search.CollectionTerminatedException;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
@@ -40,6 +41,7 @@ import org.opensearch.common.annotation.ExperimentalApi;
 import org.opensearch.search.aggregations.bucket.terms.LongKeyedBucketOrds;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -121,35 +123,23 @@ public abstract class LeafBucketCollector implements LeafCollector {
      */
     public abstract void collect(int doc, long owningBucketOrd) throws IOException;
 
+    final int[] docBuffer = new int[64];
+    int docCount = 0;
+
     @Override
     public void collect(int doc) throws IOException {
-        collect(doc, 0);
+        docBuffer[docCount++] = doc;
+        if (docCount == docBuffer.length) {
+            // Set docCount to 0 first in case the collection
+            // ends up throwing EarlyTerminationException
+            docCount = 0;
+            collect(docBuffer, 0);
+        }
     }
 
     @Override
     public void collect(DocIdStream stream) throws IOException {
         collect(stream, 0);
-    }
-
-    /**
-     * Collect a range of doc IDs, between {@code min} inclusive and {@code max} exclusive. {@code
-     * max} is guaranteed to be greater than {@code min}.
-     *
-     * <p>Extending this method is typically useful to take advantage of pre-aggregated data exposed
-     * in a {@link DocValuesSkipper}.
-     *
-     * <p>The default implementation calls {@link #collect(DocIdStream)} on a {@link DocIdStream} that
-     * matches the given range.
-     *
-     * @see #collect(int,long)
-     */
-    @Override
-    public void collectRange(int min, int max) throws IOException {
-        // Different aggregator implementations should override this method even if to just delegate to super for
-        // helping the performance: when the super call inlines, calls to #collect(int, long) become monomorphic.
-        for (int docId = min; docId < max; docId++) {
-            collect(docId, 0);
-        }
     }
 
     /**
@@ -167,13 +157,44 @@ public abstract class LeafBucketCollector implements LeafCollector {
      */
     @ExperimentalApi
     public void collect(DocIdStream stream, long owningBucketOrd) throws IOException {
-        // Different aggregator implementations should override this method even if to just delegate to super for
-        // helping the performance: when the super call inlines, calls to #collect(int, long) become monomorphic.
-        stream.forEach((doc) -> collect(doc, owningBucketOrd));
+        for (docCount = stream.intoArray(docBuffer); docCount == docBuffer.length; docCount = stream.intoArray(docBuffer)) {
+            collect(docBuffer, owningBucketOrd);
+        }
+
+        collectRemaining(owningBucketOrd);
+    }
+
+    public void collect(int[] doc, long owningBucketOrd) throws IOException {
+        for (int i = 0; i < doc.length; i++) {
+            collect(doc[i], owningBucketOrd);
+        }
     }
 
     @Override
     public void setScorer(Scorable scorer) throws IOException {
         // no-op by default
+    }
+
+    @Override
+    public void finish() throws IOException {
+        try {
+            collectRemaining(0);
+        } catch (CollectionTerminatedException e) {
+            // Some of the tests might throw CollectionTerminatedException
+            // during finish as the buffer could not fill even once and the
+            // collect(int[],long) could never be invoked. Hence, we should
+            // catch the exception here to prevent uncaught exception
+            docCount = 0;
+        }
+    }
+
+    private void collectRemaining(long owningBucketOrd) throws IOException {
+        if (docCount > 0) {
+            // Set docCount to 0 first in case the collection
+            // ends up throwing EarlyTerminationException
+            int[] docs = Arrays.copyOf(docBuffer, docCount);
+            docCount = 0;
+            collect(docs, owningBucketOrd);
+        }
     }
 }
